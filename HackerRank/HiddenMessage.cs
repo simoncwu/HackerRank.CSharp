@@ -5,9 +5,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace HiddenMessage
+namespace HackerRank
 {
-    class Program
+    public class HiddenMessage
     {
         struct Match
         {
@@ -18,11 +18,15 @@ namespace HiddenMessage
 
         static bool ContainsPhrase(string s, string[] p, int start)
         {
-            if (start >= p.Length)
-                return true;
-            string word = p[start];
-            int index = s.IndexOf(word);
-            return index != -1 && ContainsPhrase(s.Substring(index + 1), p, start + 1);
+            int pos = 0;
+            while (start < p.Length)
+            {
+                string word = p[start++];
+                int index = s.IndexOf(word, pos++);
+                if (index == -1)
+                    return false;
+            }
+            return true;
         }
 
         static bool ContainsLetters(string s, int s_start, char[] letters, int l_start)
@@ -39,28 +43,18 @@ namespace HiddenMessage
             return true;
         }
 
-        static int EndIndexOf(string s, string word, int start)
-        {
-            if (start < 0)
-                return -1;
-            foreach (char c in word)
-            {
-                while (start < s.Length && s[start] != c)
-                {
-                    start++;
-                }
-            }
-            return start < s.Length ? ++start : -1;
-        }
-
         static int GetMinCost(string t, string[] p)
         {
             int unvisited = 0, i = 0, cost = p.Length - 1, start = 0;
+
+            // process one word at a time, resetting position to start of word + 1 each time
             for (int p_i = 0, p_end = p.Length - 1; p_i < p_end; p_i++)
             {
                 string word = p[p_i];
                 start = t.IndexOf(word[0], i);
                 int matched = 0;
+
+                // process each letter of word
                 while (matched < word.Length)
                 {
                     int next = t.IndexOf(word[matched], start);
@@ -76,9 +70,11 @@ namespace HiddenMessage
                     }
                     matched++;
                 }
+                // minimize cost by avoiding reuse of visited letters if rest of p is in rest of t
                 i = ContainsPhrase(t.Substring(unvisited), p, p_i + 1) ? unvisited : (i + 1);
             }
 
+            // process last word by allowing skipping ahead mid-word to unvisited segment if match found
             char[] letters = p[p.Length - 1].ToCharArray();
             for (int c_i = 0, c_end = letters.Length; c_i < c_end; c_i++)
             {
@@ -95,56 +91,59 @@ namespace HiddenMessage
                 }
             }
 
+            // delete remaining unvisited letters
             return cost + t.Length - unvisited;
         }
 
-        static void Main(String[] args)
+        public static void Run(String[] args)
         {
-            var reader = new StreamReader("../../TestCase.txt");
-            string t = reader.ReadLine();
-            string[] p = reader.ReadLine().Split(' ');
-
-            List<Match> matches = new List<Match>();
-            int matched = 0, skipped = 0, noskip = -1;
-            string next = p[0];
-            for (int i = 0, tlen = t.Length; i < tlen; i++)
+            using (var reader = new StreamReader("../../HiddenMessageTest.txt"))
             {
-                if (next == null || i + next.Length > tlen)
-                    break;
-                if (t.Substring(i, next.Length) == next)
+                string t = reader.ReadLine();
+                string[] p = reader.ReadLine().Split(' ');
+
+                List<Match> matches = new List<Match>();
+                int matched = 0, skipped = 0, noskip = -1;
+                string next = p[0];
+                for (int i = 0, tlen = t.Length; i < tlen; i++)
                 {
-                    matches.Add(new Match
+                    if (next == null || i + next.Length > tlen)
+                        break;
+                    if (t.Substring(i, next.Length) == next)
                     {
-                        Word = next,
-                        Start = i,
-                        End = noskip = i + next.Length - 1
-                    });
-                    next = ++matched < p.Length ? p[matched] : null;
+                        matches.Add(new Match
+                        {
+                            Word = next,
+                            Start = i,
+                            End = noskip = i + next.Length - 1
+                        });
+                        next = ++matched < p.Length ? p[matched] : null;
+                    }
+                    else if (i > noskip)
+                    {
+                        skipped++;
+                    }
                 }
-                else if (i > noskip)
+                skipped += t.Length - noskip - 1;
+
+                bool allMatch = matches.Count == p.Length;
+                Console.WriteLine(allMatch ? "YES" : "NO");
+
+                if (matched > 0)
                 {
-                    skipped++;
+                    foreach (Match m in matches)
+                    {
+                        Console.Write(string.Format("{0} {1} {2} ", m.Word, m.Start, m.End));
+                    }
                 }
-            }
-            skipped += t.Length - noskip - 1;
-
-            bool allMatch = matches.Count == p.Length;
-            Console.WriteLine(allMatch ? "YES" : "NO");
-
-            if (matched > 0)
-            {
-                foreach (Match m in matches)
+                else
                 {
-                    Console.Write(string.Format("{0} {1} {2} ", m.Word, m.Start, m.End));
+                    Console.Write(0);
                 }
-            }
-            else
-            {
-                Console.Write(0);
-            }
-            Console.WriteLine();
+                Console.WriteLine();
 
-            Console.WriteLine(allMatch ? GetMinCost(t, p) : 0);
+                Console.WriteLine(allMatch ? GetMinCost(t, p) : 0);
+            }
         }
     }
 }
